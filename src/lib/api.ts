@@ -19,16 +19,16 @@ export function normalizeApiUrl(raw: string): string {
   }
   if (
     url.protocol !== 'https:' ||
-    !/^(?:[a-z0-9-]+\.)*green-api\.com$/.test(url.hostname) ||
+    !/^(?:[a-z0-9-]+\.)*green-?api\.com$/.test(url.hostname) ||
     url.username ||
     url.password ||
     url.port ||
     url.search ||
     url.hash ||
-    !['/', '', '/v3', '/v3/'].includes(url.pathname)
+    !['/', ''].includes(url.pathname)
   ) {
     throw new Error(
-      'Нужен HTTPS-адрес сервера GREEN-API, например https://3100.api.green-api.com.',
+      'Нужен HTTPS-адрес сервера GREEN-API, например https://1101.api.green-api.com.',
     );
   }
   return url.origin;
@@ -38,9 +38,10 @@ export function normalizePhone(raw: string): string {
   if (!/^[+\d\s()-]+$/.test(raw))
     throw new Error('Введите номер телефона, используя цифры и код страны.');
   let phone = raw.replace(/\D/g, '');
-  if (phone.length === 11 && phone.startsWith('8')) phone = '7' + phone.slice(1);
-  if (!/^(7\d{10}|375\d{9})$/.test(phone))
-    throw new Error('Введите номер РФ (+7, 11 цифр) или Беларуси (+375, 12 цифр).');
+  if (phone.length === 11 && phone.startsWith('8') && !raw.trim().startsWith('+'))
+    phone = '7' + phone.slice(1);
+  if (!/^[1-9]\d{6,14}$/.test(phone))
+    throw new Error('Введите международный номер с кодом страны: от 7 до 15 цифр.');
   return phone;
 }
 
@@ -94,7 +95,7 @@ export class GreenApi {
         404: 'Инстанс не найден. Проверьте idInstance и apiUrl.',
         429: 'Слишком много запросов. Подождите немного.',
         466: 'Превышен лимит тарифа GREEN-API.',
-        469: 'MAX временно ограничил проверку номеров. Попробуйте позже.',
+        469: 'WhatsApp временно ограничил проверку номеров. Попробуйте позже.',
       };
       throw new ApiError(
         messages[response.status] ?? `Ошибка GREEN-API (${response.status}). Попробуйте позже.`,
@@ -119,23 +120,18 @@ export class GreenApi {
       signal,
     );
   }
-  async checkAccount(phone: string, signal?: AbortSignal): Promise<string> {
-    const result = await this.request<{ exist?: boolean; chatId?: string; status?: boolean }>(
-      'checkAccount',
+  async checkWhatsapp(phone: string, signal?: AbortSignal): Promise<string> {
+    const result = await this.request<{ existsWhatsapp?: boolean; chatId?: string }>(
+      'checkWhatsapp',
       'POST',
-      { phoneNumber: Number(phone) },
+      { chatId: `${phone}@c.us` },
       signal,
     );
-    if (result?.status === false)
-      throw new ApiError(
-        'Не удалось проверить номер. Проверьте состояние инстанса и лимиты GREEN-API.',
-      );
-    if (!result?.exist || !result.chatId)
-      throw new ApiError(
-        'Аккаунт MAX не найден или скрыт настройками приватности. Проверьте номер.',
-      );
-    return String(result.chatId);
+    if (!result?.existsWhatsapp) throw new ApiError('Аккаунт WhatsApp не найден. Проверьте номер.');
+    // Новые версии API возвращают @lid; старые — только existsWhatsapp.
+    return result.chatId || `${phone}@c.us`;
   }
+
   async sendMessage(chatId: string, message: string, signal?: AbortSignal) {
     const result = await this.request<{ idMessage: string }>(
       'sendMessage',
@@ -144,7 +140,7 @@ export class GreenApi {
       signal,
     );
     if (!result?.idMessage)
-      throw new ApiError('Сервер не подтвердил отправку. Проверьте чат в MAX перед повтором.');
+      throw new ApiError('Сервер не подтвердил отправку. Проверьте чат в WhatsApp перед повтором.');
     return String(result.idMessage);
   }
   receive(signal: AbortSignal) {

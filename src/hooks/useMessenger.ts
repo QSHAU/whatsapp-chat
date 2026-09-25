@@ -35,7 +35,7 @@ export function useMessenger(credentials: Credentials) {
             accountError =
               notification.body.stateInstance === 'authorized'
                 ? ''
-                : 'Аккаунт MAX отключён или ограничен. Проверьте инстанс в GREEN-API.';
+                : 'Аккаунт WhatsApp отключён или ограничен. Проверьте инстанс в GREEN-API.';
           }
           dispatch({ type: 'notification', body: notification.body });
         },
@@ -97,7 +97,7 @@ export function useMessenger(credentials: Credentials) {
       const controller = new AbortController();
       actionControllers.current.add(controller);
       try {
-        const id = await api.checkAccount(phone, controller.signal);
+        const id = await api.checkWhatsapp(phone, controller.signal);
         if (!controller.signal.aborted)
           dispatch({
             type: 'addChat',
@@ -113,7 +113,7 @@ export function useMessenger(credentials: Credentials) {
   async function send(text: string) {
     const chatId = state.selectedId;
     const trimmed = text.trim();
-    if (!chatId || !trimmed || trimmed.length > 4000 || sendLock.current) return false;
+    if (!chatId || !trimmed || trimmed.length > 20000 || sendLock.current) return false;
     sendLock.current = true;
     setSending(true);
     const localId = crypto.randomUUID();

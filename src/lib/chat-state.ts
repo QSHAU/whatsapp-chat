@@ -107,8 +107,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       if (body.typeWebhook !== 'incomingMessageReceived') return state;
       const sender = body.senderData;
       const id = sender?.chatId;
-      if (!id || !body.idMessage || sender.chatType === 'group' || String(id).startsWith('-'))
-        return state;
+      if (!id || !body.idMessage || !/^\d+@(c\.us|lid)$/.test(id)) return state;
       const data = body.messageData;
       const text =
         data?.typeMessage === 'textMessage'
@@ -117,9 +116,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
             ? data.extendedTextMessageData?.text
             : undefined;
       if (typeof text !== 'string') return state;
-      const existing = state.chats.find((c) => c.id === String(id));
+      const phone = id.endsWith('@c.us') ? id.split('@')[0] : undefined;
+      const existing = state.chats.find((c) => c.id === id || (phone && c.phone === phone));
       if (existing?.messages.some((m) => m.id === body.idMessage)) return state;
-      const phone = sender.senderPhoneNumber ? String(sender.senderPhoneNumber) : undefined;
       const name =
         sender.senderContactName ||
         sender.senderName ||

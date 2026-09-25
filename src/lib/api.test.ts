@@ -1,14 +1,16 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { ApiError, GreenApi, normalizeApiUrl, normalizePhone } from './api';
 const api = new GreenApi({
-  idInstance: '3100000001',
+  idInstance: '1101000001',
   apiTokenInstance: 'test-token-only',
-  apiUrl: 'https://3100.api.green-api.com',
+  apiUrl: 'https://1101.api.green-api.com',
 });
 afterEach(() => vi.unstubAllGlobals());
 describe('GREEN-API', () => {
-  it('нормализует номера РФ и РБ', () => {
+  it('нормализует международные номера', () => {
     expect(normalizePhone('8 (999) 123-45-67')).toBe('79991234567');
+    expect(normalizePhone('+44 7700 900123')).toBe('447700900123');
+    expect(normalizePhone('+81 90 1234 567')).toBe('81901234567');
     expect(normalizePhone('+375 29 123-45-67')).toBe('375291234567');
   });
   it('отклоняет мусор вместо номера', () => {
@@ -22,34 +24,48 @@ describe('GREEN-API', () => {
       'https://api.green-api.com@evil.example',
       'https://api.green-api.com/path',
       'https://evil.example',
+      'https://7107.api.greenapi.com.evil.example',
+      'https://fakegreenapi.com',
+      'https://7107.api.greenapi.com@evil.example',
     ])
       expect(() => normalizeApiUrl(url)).toThrow();
-    expect(normalizeApiUrl('https://3100.api.green-api.com/v3/')).toBe(
-      'https://3100.api.green-api.com',
+    expect(normalizeApiUrl('https://7107.api.greenapi.com/')).toBe('https://7107.api.greenapi.com');
+    expect(normalizeApiUrl('https://1101.api.green-api.com/')).toBe(
+      'https://1101.api.green-api.com',
     );
   });
   it('получает канонический chatId по номеру', async () => {
     const fetch = vi
       .fn()
-      .mockResolvedValue(new Response(JSON.stringify({ exist: true, chatId: '101' })));
+      .mockResolvedValue(
+        new Response(JSON.stringify({ existsWhatsapp: true, chatId: '123456789012345@lid' })),
+      );
     vi.stubGlobal('fetch', fetch);
-    expect(await api.checkAccount('79991234567')).toBe('101');
-    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ phoneNumber: 79991234567 });
+    expect(await api.checkWhatsapp('79991234567')).toBe('123456789012345@lid');
+    expect(fetch.mock.calls[0][0]).toContain('/checkWhatsapp/');
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ chatId: '79991234567@c.us' });
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ existsWhatsapp: true })));
+    expect(await api.checkWhatsapp('79991234567')).toBe('79991234567@c.us');
   });
   it('показывает понятную ошибку отсутствующего аккаунта', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(new Response(JSON.stringify({ exist: false, chatId: '' }))),
+      vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify({ existsWhatsapp: false, chatId: '' }))),
     );
-    await expect(api.checkAccount('79991234567')).rejects.toThrow('не найден');
+    await expect(api.checkWhatsapp('79991234567')).rejects.toThrow('не найден');
   });
   it('отправляет текст правильным методом', async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ idMessage: 'sent1' })));
     vi.stubGlobal('fetch', fetch);
-    expect(await api.sendMessage('101', 'Привет')).toBe('sent1');
+    expect(await api.sendMessage('123456789012345@lid', 'Привет')).toBe('sent1');
     expect(fetch.mock.calls[0][0]).toContain('/sendMessage/');
     expect(fetch.mock.calls[0][1].method).toBe('POST');
-    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ chatId: '101', message: 'Привет' });
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+      chatId: '123456789012345@lid',
+      message: 'Привет',
+    });
   });
   it('подтверждает только receiptId полученного уведомления', async () => {
     const fetch = vi.fn().mockResolvedValue(new Response('{"result":true}'));

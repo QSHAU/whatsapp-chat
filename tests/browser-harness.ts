@@ -7,7 +7,8 @@ let queue: Notification[] = [];
 const record: { method: string; body: unknown }[] = [];
 window.fetch = async (input, init) => {
   const url = String(input);
-  if (!url.includes('green-api.com/waInstance')) return realFetch(input, init);
+  if (!/^https:\/\/(?:[a-z0-9-]+\.)*green-?api\.com\/waInstance/.test(url))
+    return realFetch(input, init);
   const method = url.split('/')[4];
   const body = init?.body ? JSON.parse(String(init.body)) : null;
   record.push({ method, body });
@@ -21,10 +22,10 @@ window.fetch = async (input, init) => {
   if (url.includes('invalid-token-test')) return respond({}, 401);
   if (method === 'getStateInstance') return respond({ stateInstance: 'authorized' });
   if (method === 'getSettings') return respond({ incomingWebhook: 'yes', webhookUrl: '' });
-  if (method === 'checkAccount')
+  if (method === 'checkWhatsapp')
     return respond({
-      exist: !String(body.phoneNumber).endsWith('0000'),
-      chatId: String(body.phoneNumber).endsWith('4567') ? '101' : '102',
+      existsWhatsapp: !String(body.chatId).split('@')[0].endsWith('0000'),
+      chatId: body.chatId,
     });
   if (method === 'sendMessage') {
     if (body.message === 'Ошибка') return respond({}, 500);
@@ -47,8 +48,7 @@ window.fetch = async (input, init) => {
           timestamp: Math.floor(Date.now() / 1000),
           senderData: {
             chatId: body.chatId,
-            senderName: body.chatId === '101' ? 'Анна Смирнова' : 'Михаил Волков',
-            chatType: 'user',
+            senderName: body.chatId === '79991234567@c.us' ? 'Анна Смирнова' : 'Михаил Волков',
           },
           messageData: {
             typeMessage: 'textMessage',
@@ -81,5 +81,5 @@ window.fetch = async (input, init) => {
   }
   return respond({}, 404);
 };
-document.title = 'Пульс — тестовый API (без реальных отправок)';
+document.title = 'тестовый API (без реальных отправок)';
 await import('../src/main');

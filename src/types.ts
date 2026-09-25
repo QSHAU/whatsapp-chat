@@ -26,10 +26,8 @@ export interface Webhook {
   senderData?: {
     chatId?: string;
     chatName?: string;
-    chatType?: string;
     senderName?: string;
     senderContactName?: string;
-    senderPhoneNumber?: number | string;
   };
   messageData?: {
     typeMessage?: string;

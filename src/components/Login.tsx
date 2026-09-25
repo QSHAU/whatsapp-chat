@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type SubmitEvent } from 'react';
 import { errorMessage, GreenApi, normalizeApiUrl } from '../lib/api';
 import type { Credentials } from '../types';
 
@@ -10,7 +10,7 @@ export function Login({ onConnect }: { onConnect: (credentials: Credentials) => 
   const [error, setError] = useState('');
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
-  async function connect(event: FormEvent) {
+  async function connect(event: SubmitEvent) {
     event.preventDefault();
     if (busy) return;
     setError('');
@@ -30,12 +30,16 @@ export function Login({ onConnect }: { onConnect: (credentials: Credentials) => 
       const state = await api.getState(controller.current.signal);
       if (state?.stateInstance !== 'authorized')
         throw new Error(
-          'Подключите аккаунт MAX в кабинете GREEN-API и дождитесь состояния «Авторизован».',
+          'Подключите аккаунт WhatsApp в кабинете GREEN-API и дождитесь состояния «Авторизован».',
         );
       const settings = await api.getSettings(controller.current.signal);
-      if (settings?.webhookUrl || settings?.incomingWebhook !== 'yes')
+      if (settings?.webhookUrl)
         throw new Error(
-          'В настройках GREEN-API включите входящие уведомления и очистите Webhook URL. Затем подождите минуту и повторите вход.',
+          'Откройте кабинет GREEN-API → выберите свой инстанс → настройки уведомлений. В поле «Адрес отправки уведомлений (URL)» (Webhook URL) удалите весь адрес и сохраните изменения. Подождите несколько минут и повторите вход.',
+        );
+      if (settings?.incomingWebhook !== 'yes')
+        throw new Error(
+          'Откройте кабинет GREEN-API → выберите свой инстанс → настройки уведомлений. Включите «Получать уведомления о входящих сообщениях и файлах» и сохраните изменения. Подождите несколько минут и повторите вход.',
         );
       onConnect(credentials);
     } catch (err) {
@@ -47,7 +51,7 @@ export function Login({ onConnect }: { onConnect: (credentials: Credentials) => 
   return (
     <main className="login-page">
       <section className="login-card" aria-labelledby="login-title">
-        <h1 id="login-title">Чат для MAX</h1>
+        <h1 id="login-title">Чат для WhatsApp</h1>
         <p className="muted">Подключение через GREEN-API</p>
         <form onSubmit={connect} className="stack-form">
           <label htmlFor="instance">ID инстанса (idInstance)</label>
@@ -55,7 +59,7 @@ export function Login({ onConnect }: { onConnect: (credentials: Credentials) => 
             id="instance"
             inputMode="numeric"
             autoComplete="off"
-            placeholder="3100000001"
+            placeholder="1101000001"
             value={id}
             onChange={(e) => setId(e.target.value)}
             required
@@ -76,7 +80,7 @@ export function Login({ onConnect }: { onConnect: (credentials: Credentials) => 
             id="api-url"
             type="url"
             autoComplete="url"
-            placeholder="https://3100.api.green-api.com"
+            placeholder="https://1101.api.green-api.com"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             required
@@ -101,9 +105,19 @@ export function Login({ onConnect }: { onConnect: (credentials: Credentials) => 
         <details className="setup-help">
           <summary>Настройка подключения</summary>
           <ol>
-            <li>Авторизуйте инстанс MAX в GREEN-API.</li>
-            <li>Включите уведомления о входящих сообщениях.</li>
-            <li>Оставьте Webhook URL пустым и подождите около минуты.</li>
+            <li>
+              Создайте инстанс WhatsApp в GREEN-API и привяжите его через «Связанные устройства» в
+              WhatsApp.
+            </li>
+            <li>
+              В кабинете GREEN-API выберите свой инстанс и откройте настройки уведомлений. Включите
+              «Получать уведомления о входящих сообщениях и файлах».
+            </li>
+            <li>
+              Найдите поле «Адрес отправки уведомлений (URL)» (Webhook URL). Если в нём указан
+              адрес, удалите его целиком. Если поле пустое, ничего менять не нужно.
+            </li>
+            <li>Сохраните изменения, подождите несколько минут и нажмите «Войти» здесь.</li>
           </ol>
         </details>
       </section>

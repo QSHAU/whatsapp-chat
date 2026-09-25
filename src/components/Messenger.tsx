@@ -110,7 +110,7 @@ export function Messenger({
   }
   async function send(event?: FormEvent) {
     event?.preventDefault();
-    if (!active || messenger.sending || !draft.trim() || draft.trim().length > 4000) return;
+    if (!active || messenger.sending || !draft.trim() || draft.trim().length > 20000) return;
     setDrafts((prev) => ({ ...prev, [active.id]: '' }));
     nearBottom.current = true;
     await messenger.send(draft);
@@ -154,9 +154,17 @@ export function Messenger({
               </button>
             ))
           ) : (
-            <p className="sidebar-empty">
-              Нет чатов. Нажмите «Новый чат», чтобы написать по номеру телефона.
-            </p>
+            <div className="sidebar-empty">
+              <strong>Начните переписку</strong>
+              <p>
+                Нажмите «Новый чат» и введите номер получателя. Существующие чаты и история из
+                WhatsApp здесь не загружаются.
+              </p>
+              <p>
+                Переписка в этом интерфейсе сохраняется только до обновления страницы или выхода.
+                Сообщения в WhatsApp сохранятся.
+              </p>
+            </div>
           )}
         </nav>
         <footer className="sidebar-footer">
@@ -221,7 +229,7 @@ export function Messenger({
                         <div className="send-error">
                           <span>
                             {message.status === 'unknown'
-                              ? 'Отправка не подтверждена. Проверьте MAX перед повтором.'
+                              ? 'Отправка не подтверждена. Проверьте WhatsApp перед повтором.'
                               : (message.error ?? 'Не удалось доставить сообщение.')}
                           </span>
                           <button
@@ -259,16 +267,16 @@ export function Messenger({
                 <button
                   className="primary-button"
                   aria-label="Отправить сообщение"
-                  disabled={!draft.trim() || draft.trim().length > 4000 || messenger.sending}
+                  disabled={!draft.trim() || draft.trim().length > 20000 || messenger.sending}
                 >
                   {messenger.sending ? 'Отправка…' : 'Отправить'}
                 </button>
               </form>
               <div className="composer-hint">
                 <span>Enter — отправить, Shift + Enter — новая строка</span>
-                {draft.trim().length > 3500 && (
-                  <span className={draft.trim().length > 4000 ? 'over-limit' : ''}>
-                    {draft.trim().length} / 4000
+                {draft.trim().length > 19000 && (
+                  <span className={draft.trim().length > 20000 ? 'over-limit' : ''}>
+                    {draft.trim().length} / 20000
                   </span>
                 )}
               </div>
@@ -300,7 +308,7 @@ export function Messenger({
               required
               disabled={creating}
             />
-            <small className="muted">Россия (+7) или Беларусь (+375)</small>
+            <small className="muted">Международный номер с кодом страны</small>
             {createError && (
               <p className="error-box" role="alert">
                 {createError}
@@ -315,7 +323,7 @@ export function Messenger({
       {dialog === 'logout' && (
         <Dialog title="Выйти из аккаунта?" onClose={() => setDialog(null)}>
           <p className="muted">
-            Ключ и переписка будут удалены из памяти вкладки. Сообщения в MAX сохранятся.
+            Ключ и переписка будут удалены из памяти вкладки. Сообщения в WhatsApp сохранятся.
           </p>
           <div className="dialog-actions">
             <button className="secondary-button" onClick={() => setDialog(null)}>
